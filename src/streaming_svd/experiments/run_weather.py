@@ -1,4 +1,8 @@
-"""Weather/real-data streaming SVD runner."""
+"""Weather/real-data streaming SVD runner.
+
+Dtype fix: --dtype flag now actually controls computation (float32 default, float64 via --dtype float64).
+Loader simplification: device parameter removed from load_weather_matrix (always returns CPU tensor in float32).
+"""
 
 import argparse
 import gc
@@ -18,7 +22,6 @@ def load_weather_matrix(
     path: Path,
     shape: tuple = (100, 500, 500),
     memmap: bool = False,
-    device: str = 'cpu',
 ) -> torch.Tensor:
     """
     Load a binary float32 weather data file and reshape/unfold into matrix form.
@@ -31,13 +34,11 @@ def load_weather_matrix(
         Expected shape (100, 500, 500) = (z, y, x).
     memmap : bool
         If True, use numpy memmap to avoid full memory load.
-    device : str
-        Device for output tensor (currently forced to 'cpu').
 
     Returns
     -------
     A : torch.Tensor
-        Matrix of shape (250000, 100) with float32.
+        Matrix of shape (250000, 100) with float32 on CPU.
         Rows are spatial (x, y) points; columns are z-levels.
     """
     try:
@@ -199,6 +200,12 @@ def run_weather_experiment(
         print(f'Cold-start p={p_cold}, q={q}')
         print(f'Warm-start p={p_warm}, q={q}')
         print(f'Device: {device}')
+        
+        # Normalize and display dtype
+        normalized_dtype = 'float64' if dtype.lower() in ('float64', 'fp64', 'double') else 'float32'
+        print(f'Data type: {normalized_dtype}')
+        if normalized_dtype == 'float64':
+            print('  WARNING: float64 computation may be slower and use more memory')
         print('=' * 70)
 
     U_warm_prev = None
@@ -215,8 +222,13 @@ def run_weather_experiment(
             if verbose:
                 print(f'\nProcessing timestep {t}: {file_path.name}')
 
-            A = load_weather_matrix(file_path, memmap=memmap, device=str(device))
-            A = A.to(device)
+            A = load_weather_matrix(file_path, memmap=memmap)
+            
+            # Cast A to specified dtype
+            if dtype.lower() in ('float64', 'fp64', 'double'):
+                A = A.to(device=device, dtype=torch.float64)
+            else:
+                A = A.to(device=device, dtype=torch.float32)
 
             optimal_error = np.nan
             if compute_optimal:
@@ -233,6 +245,10 @@ def run_weather_experiment(
                 return_stats=True,
             )
             U_cold, s_cold, Vt_cold, stats_cold = result_cold  # type: ignore[misc]
+            # Ensure SVD results match A's dtype
+            U_cold = U_cold.to(dtype=A.dtype)
+            s_cold = s_cold.to(dtype=A.dtype)
+            Vt_cold = Vt_cold.to(dtype=A.dtype)
             time_cold = time.perf_counter() - t0
 
             t0 = time.perf_counter()
@@ -247,6 +263,10 @@ def run_weather_experiment(
                 return_stats=True,
             )
             U_warm, s_warm, Vt_warm, stats_warm = result_warm  # type: ignore[misc]
+            # Ensure SVD results match A's dtype
+            U_warm = U_warm.to(dtype=A.dtype)
+            s_warm = s_warm.to(dtype=A.dtype)
+            Vt_warm = Vt_warm.to(dtype=A.dtype)
             time_warm = time.perf_counter() - t0
 
             error_cold = rel_fro_error(A, U_cold, s_cold, Vt_cold)

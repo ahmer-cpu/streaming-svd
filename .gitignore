@@ -130,21 +130,18 @@ dmypy.json
 *~
 .DS_Store
 
-# Research-specific
+# Research-specific shared folders (too large or sensitive for version control)
+data/
+docs/
+
+# Results figures (regenerable)
 results/figures/*
 !results/figures/.gitkeep
-data/raw/*
-!data/raw/.gitkeep
-data/processed/*
-!data/processed/.gitkeep
-data/interim/*
-!data/interim/.gitkeep
 *.npy
 *.csv
 *.json
 
-# LaTeX artifacts
-docs/latex/**/build/
+# LaTeX build artifacts
 *.aux
 *.bbl
 *.bcf
@@ -158,3 +155,4 @@ docs/latex/**/build/
 *.run.xml
 *.synctex.gz
 *.toc
+
