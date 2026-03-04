@@ -142,3 +142,19 @@ data/interim/*
 *.npy
 *.csv
 *.json
+
+# LaTeX artifacts
+docs/latex/**/build/
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
