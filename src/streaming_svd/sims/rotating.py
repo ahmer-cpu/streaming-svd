@@ -2,7 +2,7 @@
 
 import torch
 
-from streaming_svd.sims.perturbation import make_initial_matrix
+from .perturbation import make_initial_matrix
 
 
 def make_initial_matrix_rotating(

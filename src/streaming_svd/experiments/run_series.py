@@ -19,6 +19,10 @@ from streaming_svd.algos.warm_rsvd import warm_rsvd
 from streaming_svd.sims.series import sample_independent_series
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def optimal_rank_k_rel_fro_error(A, k):
     """Compute optimal relative Frobenius error of rank-k truncation."""
     svals = torch.linalg.svdvals(A)
@@ -55,6 +59,10 @@ def _empty_results(params):
         'params': params,
     }
 
+
+# ---------------------------------------------------------------------------
+# Experiment runner
+# ---------------------------------------------------------------------------
 
 def run_series_experiment(
     m=1000,
@@ -240,6 +248,10 @@ def run_series_experiment(
     return results
 
 
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
 def _plot_error_vs_optimal(results, output_file):
     """Plot cold, warm, and optimal errors over time."""
     timesteps = np.array(results['timesteps'])
@@ -318,6 +330,10 @@ def generate_plots(results, output_dir='results/figures'):
     print(f'All plots saved to: {output_path.absolute()}')
 
 
+# ---------------------------------------------------------------------------
+# CSV export
+# ---------------------------------------------------------------------------
+
 def _save_csv(results, csv_path):
     """Save results to CSV."""
     try:
@@ -389,6 +405,10 @@ def _save_csv(results, csv_path):
                 )
         print(f'Results saved to {csv_path}')
 
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def main():
     """Command-line interface for control experiment."""

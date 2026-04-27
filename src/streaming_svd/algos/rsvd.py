@@ -1,20 +1,25 @@
 """Cold-start randomized SVD implementation."""
 
 import time
+from typing import Dict, Optional, Tuple, Union
+
 import torch
 
 
 def rsvd(
-    A,
-    k,
-    p=10,
-    q=0,
+    A: torch.Tensor,
+    k: int,
+    p: int = 10,
+    q: int = 0,
     *,
-    device=None,
-    dtype=torch.float32,
-    seed=None,
-    return_stats=True,
-):
+    device: Optional[Union[str, torch.device]] = None,
+    dtype: torch.dtype = torch.float32,
+    seed: Optional[int] = None,
+    return_stats: bool = True,
+) -> Union[
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict],
+]:
     """
     Randomized SVD (cold-start) using the Halko et al. algorithm.
     
@@ -126,9 +131,10 @@ def rsvd(
     Q, _ = torch.linalg.qr(Y, mode='reduced')
     stats['timings']['qr'] = time.perf_counter() - t0
     
-    # Step 5: Project B = Q.T @ A
+    # Step 5: Project B = Q.T @ A  (equivalent to A.T @ Q, counts as AT@X)
     t0 = time.perf_counter()
     B = Q.T @ A
+    stats['matmul_counts']['AT@X'] += 1
     stats['timings']['projection'] = time.perf_counter() - t0
     
     # Step 6: Small SVD of B

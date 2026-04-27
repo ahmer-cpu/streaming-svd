@@ -1,7 +1,16 @@
-"""Weather/real-data streaming SVD runner.
+"""Real-data streaming SVD experiment runner.
 
-Dtype fix: --dtype flag now actually controls computation (float32 default, float64 via --dtype float64).
-Loader simplification: device parameter removed from load_weather_matrix (always returns CPU tensor in float32).
+Loads volumetric weather snapshots (e.g. Uf01.bin ... Uf48.bin) and runs
+cold-start vs warm-start rSVD across consecutive timesteps.
+
+Data format: binary float32 files, shape (100, 500, 500) = (z, y, x).
+Reshaped to matrix (250000, 100): rows are spatial (x,y) points, columns are z-levels.
+
+Data loading utilities live in :mod:`streaming_svd.data` and are re-exported
+here for backwards compatibility.
+
+CLI entry point:
+    python -m streaming_svd.experiments.run_weather --help
 """
 
 import argparse
@@ -16,89 +25,10 @@ import torch
 from streaming_svd.algos.metrics import rel_fro_error, rel_spec_error_est, subspace_sin_theta
 from streaming_svd.algos.rsvd import rsvd
 from streaming_svd.algos.warm_rsvd import warm_rsvd
-
-
-def load_weather_matrix(
-    path: Path,
-    shape: tuple = (100, 500, 500),
-    memmap: bool = False,
-) -> torch.Tensor:
-    """
-    Load a binary float32 weather data file and reshape/unfold into matrix form.
-
-    Parameters
-    ----------
-    path : Path
-        Path to binary file (100*500*500 float32 little-endian).
-    shape : tuple
-        Expected shape (100, 500, 500) = (z, y, x).
-    memmap : bool
-        If True, use numpy memmap to avoid full memory load.
-
-    Returns
-    -------
-    A : torch.Tensor
-        Matrix of shape (250000, 100) with float32 on CPU.
-        Rows are spatial (x, y) points; columns are z-levels.
-    """
-    try:
-        if memmap:
-            volume = np.memmap(
-                path,
-                dtype='<f4',
-                mode='r',
-                shape=shape,
-            )
-        else:
-            data = np.fromfile(path, dtype='<f4')
-            volume = data.reshape(shape)
-
-        A = volume.reshape(shape[0], -1).T
-        A = torch.from_numpy(np.ascontiguousarray(A, dtype=np.float32))
-        return A
-    except Exception as e:
-        raise RuntimeError(f"Failed to load {path}: {e}")
-
-
-def optimal_rank_k_rel_fro_error_from_gram(A: torch.Tensor, k: int) -> float:
-    """
-    Compute optimal rank-k relative Frobenius error via Gram matrix.
-
-    Avoids full SVD of A (250000 x 100) by computing from G = A^T A (100 x 100).
-
-    Parameters
-    ----------
-    A : torch.Tensor
-        Matrix of shape (m, n) where m >> n (e.g., 250000 x 100).
-    k : int
-        Target rank.
-
-    Returns
-    -------
-    opt_error : float
-        Relative Frobenius error of best rank-k approximation.
-    """
-    if k >= A.shape[1]:
-        return 0.0
-
-    with torch.no_grad():
-        G = A.T @ A
-        G = G.to(torch.float64)
-
-        eigvals = torch.linalg.eigvalsh(G)
-        eigvals = torch.clamp(eigvals, min=0.0)
-
-        sigmas = torch.sqrt(eigvals)
-        sigmas = torch.flip(sigmas, dims=[0])
-
-        total_energy = torch.sum(sigmas**2)
-        if total_energy <= 0:
-            return 0.0
-
-        tail_energy = torch.sum(sigmas[k:] ** 2)
-        opt_error = float(torch.sqrt(tail_energy / total_energy).item())
-
-    return opt_error
+from streaming_svd.data import (
+    load_weather_matrix,
+    optimal_rank_k_rel_fro_error_from_gram,
+)
 
 
 def _empty_results():
@@ -121,6 +51,10 @@ def _empty_results():
         'params': {},
     }
 
+
+# ---------------------------------------------------------------------------
+# Experiment runner
+# ---------------------------------------------------------------------------
 
 def run_weather_experiment(
     data_dir: str = 'data/raw',
@@ -316,6 +250,10 @@ def run_weather_experiment(
     return results
 
 
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
 def _plot_errors(results, output_file):
     """Plot cold, warm, and optimal errors over time."""
     timesteps = np.array(results['timesteps'], dtype=int)
@@ -450,6 +388,10 @@ def generate_plots(results, output_dir='results/figures'):
     print(f'\nAll weather plots saved to: {output_path.absolute()}')
 
 
+# ---------------------------------------------------------------------------
+# CSV export
+# ---------------------------------------------------------------------------
+
 def _save_csv(results, csv_path):
     """Save results to CSV."""
     try:
@@ -520,6 +462,10 @@ def _save_csv(results, csv_path):
                     )
         print(f'Results saved to: {csv_path}')
 
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def main():
     """Command-line interface for weather experiment."""

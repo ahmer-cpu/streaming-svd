@@ -34,6 +34,10 @@ except ImportError:
     from run_synthetic import run_experiment_additive, run_experiment_rotating
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def ensure_directories(output_dir, fig_dir):
     """Ensure output directories exist."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -90,6 +94,10 @@ def compute_metrics(results, T):
         'final_gap': final_gap,
     }
 
+
+# ---------------------------------------------------------------------------
+# Sweep runners
+# ---------------------------------------------------------------------------
 
 def run_single_config(experiment, m, n, k, p_cold, p_warm, q, T, seed, device='cpu', quiet=False):
     """
@@ -235,6 +243,10 @@ def run_sweep(
     return df_raw, df_agg
 
 
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
 def plot_error_gap_histogram(df_raw, fig_dir, quiet=False):
     """Plot histogram of mean_gap values for each experiment type."""
     fig, axes = plt.subplots(1, 3, figsize=(15, 4))
@@ -295,6 +307,10 @@ def plot_fraction_warm_better(df_agg, fig_dir, quiet=False):
         print(f"Saved fraction plot to {output_path}")
     plt.close()
 
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def main():
     """Main entry point with CLI argument parsing."""

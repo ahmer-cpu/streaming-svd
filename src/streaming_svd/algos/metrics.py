@@ -3,7 +3,7 @@
 import torch
 
 
-def rel_fro_error(A, U, s, Vt):
+def rel_fro_error(A: torch.Tensor, U: torch.Tensor, s: torch.Tensor, Vt: torch.Tensor) -> float:
     """
     Compute relative Frobenius norm error of SVD approximation.
     
@@ -35,7 +35,7 @@ def rel_fro_error(A, U, s, Vt):
     return (error_norm / A_norm).item()
 
 
-def rel_spec_error_est(A, U, n_iter=3):
+def rel_spec_error_est(A: torch.Tensor, U: torch.Tensor, n_iter: int = 3) -> float:
     """
     Estimate relative spectral norm error of subspace approximation.
     
@@ -77,14 +77,25 @@ def rel_spec_error_est(A, U, n_iter=3):
     
     # Estimate ||(I - UU^T) A||_2
     residual_norm = torch.linalg.norm(A @ v - U @ (U.T @ (A @ v)))
-    
-    # Compute ||A||_2 (or estimate it)
-    A_norm = torch.linalg.norm(A, ord=2)
-    
+
+    # Estimate ||A||_2 via power iteration (avoids an expensive full SVD)
+    w_a = torch.randn(n, 1, dtype=dtype, device=device)
+    w_a = w_a / torch.linalg.norm(w_a)
+    for _ in range(n_iter):
+        w_a = A @ w_a
+        w_a_norm = torch.linalg.norm(w_a)
+        if w_a_norm > 1e-10:
+            w_a = w_a / w_a_norm
+        w_a = A.T @ w_a
+        w_a_norm = torch.linalg.norm(w_a)
+        if w_a_norm > 1e-10:
+            w_a = w_a / w_a_norm
+    A_norm = torch.linalg.norm(A @ w_a)
+
     return (residual_norm / A_norm).item()
 
 
-def subspace_sin_theta(U1, U2):
+def subspace_sin_theta(U1: torch.Tensor, U2: torch.Tensor) -> float:
     """
     Compute subspace distance using principal angles (sine of angles).
     
@@ -127,7 +138,7 @@ def subspace_sin_theta(U1, U2):
     return sin_theta.max().item()
 
 
-def subspace_sin_theta_fro(U1, U2):
+def subspace_sin_theta_fro(U1: torch.Tensor, U2: torch.Tensor) -> float:
     """
     Compute Frobenius norm of sine of principal angles.
     

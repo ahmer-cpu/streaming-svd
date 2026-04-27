@@ -1,22 +1,28 @@
 """Warm-start randomized SVD implementation."""
 
 import time
+from typing import Dict, Optional, Tuple, Union
+
 import torch
+
 from .rsvd import rsvd
 
 
 def warm_rsvd(
-    A,
-    U_prev,
-    k,
-    p=5,
-    q=0,
+    A: torch.Tensor,
+    U_prev: Optional[torch.Tensor],
+    k: int,
+    p: int = 5,
+    q: int = 0,
     *,
-    device=None,
-    dtype=torch.float32,
-    seed=None,
-    return_stats=True,
-):
+    device: Optional[Union[str, torch.device]] = None,
+    dtype: torch.dtype = torch.float32,
+    seed: Optional[int] = None,
+    return_stats: bool = True,
+) -> Union[
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+    Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Dict],
+]:
     """
     Warm-start randomized SVD using previous subspace information.
     
@@ -99,6 +105,12 @@ def warm_rsvd(
         raise ValueError(f"p={p} must be non-negative")
     if q < 0:
         raise ValueError(f"q={q} must be non-negative")
+    sketch_size = r_prev + p
+    if k > sketch_size:
+        raise ValueError(
+            f"k={k} exceeds sketch size r_prev+p={r_prev}+{p}={sketch_size}. "
+            f"Increase p (warm oversampling) to at least {k - r_prev}."
+        )
     
     # Device and dtype handling
     if device is None:
@@ -173,9 +185,10 @@ def warm_rsvd(
     Q, _ = torch.linalg.qr(Y, mode='reduced')
     stats['timings']['qr'] = time.perf_counter() - t0
     
-    # Step 8: Project B = Q.T @ A
+    # Step 8: Project B = Q.T @ A  (equivalent to A.T @ Q, counts as AT@X)
     t0 = time.perf_counter()
     B = Q.T @ A
+    stats['matmul_counts']['AT@X'] += 1
     stats['timings']['projection'] = time.perf_counter() - t0
     
     # Step 9: Small SVD of B

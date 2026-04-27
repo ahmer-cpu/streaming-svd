@@ -15,6 +15,10 @@ from streaming_svd.sims.perturbation import make_initial_matrix, perturb_step
 from streaming_svd.sims.rotating import make_initial_matrix_rotating, rotate_step
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def optimal_rank_k_rel_fro_error(A, k):
     """Compute optimal relative Frobenius error of rank-k truncation."""
     svals = torch.linalg.svdvals(A)
@@ -54,6 +58,10 @@ def _empty_results(mode, params):
         'params': params,
     }
 
+
+# ---------------------------------------------------------------------------
+# Experiment runners
+# ---------------------------------------------------------------------------
 
 def run_experiment_additive(
     m=1000,
@@ -326,6 +334,10 @@ def run_experiment_rotating(
     return results
 
 
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
 def _plot_error_vs_optimal(results, title, output_file):
     timesteps = np.array(results['timesteps'])
 
@@ -421,6 +433,10 @@ def generate_plots(additive_results=None, rotating_results=None, output_dir='res
     print(f'All plots saved to: {output_path.absolute()}')
 
 
+# ---------------------------------------------------------------------------
+# CSV export
+# ---------------------------------------------------------------------------
+
 def _save_csv(results, csv_path):
     import pandas as pd  # type: ignore
 
@@ -450,6 +466,10 @@ def _save_csv(results, csv_path):
     df.to_csv(csv_path, index=False)
     print(f'Results saved to {csv_path}')
 
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def main():
     """Command-line interface for synthetic experiments."""
