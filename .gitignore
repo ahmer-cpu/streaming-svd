@@ -122,6 +122,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# AI agent config
+CLAUDE.md
+.claude/
+
 # IDE
 .vscode/
 .idea/
@@ -140,6 +144,9 @@ results/figures/*
 *.npy
 *.csv
 *.json
+
+# C++ build artifacts
+phase2_cpp/build/
 
 # LaTeX build artifacts
 *.aux
