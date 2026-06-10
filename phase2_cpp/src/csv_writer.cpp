@@ -19,6 +19,10 @@ const std::vector<std::string>& RawRowWriter::header() {
         "cold_spec_error", "warm_spec_error",
         "fro_error_gap", "fro_error_ratio",
         "cold_fro_overhead", "warm_fro_overhead", "cold_spec_gap",
+        "cold_max_elem_error", "warm_max_elem_error",
+        "cold_psnr", "warm_psnr",
+        "cold_pctl_99", "warm_pctl_99",
+        "cold_pctl_999", "warm_pctl_999",
         // Subspace quality (5)
         "warm_drift_spec", "warm_drift_fro",
         "cold_vs_warm_subspace_spec", "cold_vs_warm_subspace_fro",
@@ -40,7 +44,12 @@ const std::vector<std::string>& RawRowWriter::header() {
         "warm_matmuls_AX", "warm_matmuls_ATX", "warm_matmuls_total",
         "matmul_savings",
         // Config params (4)
-        "cold_stats_k", "cold_stats_p", "warm_stats_r_prev", "warm_stats_warm_start"
+        "cold_stats_k", "cold_stats_p", "warm_stats_r_prev", "warm_stats_warm_start",
+        // Error-bound hierarchy (8)
+        "cold_spectral_bound", "warm_spectral_bound",
+        "cold_leverage_bound", "warm_leverage_bound",
+        "cold_min_leverage_U", "warm_min_leverage_U",
+        "cold_min_leverage_V", "warm_min_leverage_V"
     };
     return H;
 }
@@ -119,6 +128,14 @@ void RawRowWriter::write_row(const RowData& r) {
         << fmt(r.cold_fro_overhead)           << sep
         << fmt(r.warm_fro_overhead)           << sep
         << fmt(r.cold_spec_gap)               << sep
+        << fmt(r.cold_max_elem_error)         << sep
+        << fmt(r.warm_max_elem_error)         << sep
+        << fmt(r.cold_psnr)                   << sep
+        << fmt(r.warm_psnr)                   << sep
+        << fmt(r.cold_pctl_99)                << sep
+        << fmt(r.warm_pctl_99)                << sep
+        << fmt(r.cold_pctl_999)               << sep
+        << fmt(r.warm_pctl_999)               << sep
         // Subspace quality
         << fmt(r.warm_drift_spec)             << sep
         << fmt(r.warm_drift_fro)              << sep
@@ -164,7 +181,16 @@ void RawRowWriter::write_row(const RowData& r) {
         << r.cold_stats_k                     << sep
         << r.cold_stats_p                     << sep
         << r.warm_stats_r_prev                << sep
-        << fmt_bool(r.warm_stats_warm_start)
+        << fmt_bool(r.warm_stats_warm_start)  << sep
+        // Error-bound hierarchy
+        << fmt(r.cold_spectral_bound)         << sep
+        << fmt(r.warm_spectral_bound)         << sep
+        << fmt(r.cold_leverage_bound)         << sep
+        << fmt(r.warm_leverage_bound)         << sep
+        << fmt(r.cold_min_leverage_U)         << sep
+        << fmt(r.warm_min_leverage_U)         << sep
+        << fmt(r.cold_min_leverage_V)         << sep
+        << fmt(r.warm_min_leverage_V)
         << '\n';
 
     out_.flush();

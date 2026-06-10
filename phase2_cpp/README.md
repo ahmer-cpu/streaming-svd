@@ -47,13 +47,13 @@ The executable will be at `cpp/build/Release/hurricane_bench.exe`.
 ```powershell
 # Single variable smoke test (3 timesteps)
 ./cpp/build/Release/hurricane_bench.exe `
-    --data-dir data/raw `
+    --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --vars Uf --start 1 --end 3
 
 # Full experiment (all 13 variables × 48 timesteps)
 ./cpp/build/Release/hurricane_bench.exe `
-    --data-dir data/raw `
+    --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --start 1 --end 48 `
     --k 20 --p-cold 10 --p-warm 5 --q 0 --seed 42

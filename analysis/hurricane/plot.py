@@ -56,7 +56,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from streaming_svd.experiments.hurricane.analyze import load_raw_results
+from analyze import load_raw_results
 
 # ---------------------------------------------------------------------------
 # Colour palette and style constants
@@ -249,6 +249,95 @@ def plot_timing_breakdown(
     _apply_grid(ax_bot)
     ax_bot.legend(fontsize=8, loc="upper right", ncol=2)
     fig.subplots_adjust(hspace=0.3)
+    _save_figure(fig, out_stem, fmts, dpi)
+
+
+def plot_psnr_timeseries(
+    df_var: pd.DataFrame, var: str, out_stem: Path,
+    fmts: Sequence[str] = ("png",), dpi: int = 150,
+) -> None:
+    """PSNR (dB) vs timestep — cold and warm."""
+    df = df_var.sort_values("timestep")
+    ts = df["timestep"].values
+
+    if "cold_psnr" not in df.columns or df["cold_psnr"].isna().all():
+        return
+
+    fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_H))
+    ax.plot(ts, df["cold_psnr"], "o-", color=_COLD_COLOR, lw=2.2, ms=6, label=_LABEL_COLD)
+    ax.plot(ts, df["warm_psnr"], "s-", color=_WARM_COLOR, lw=2.2, ms=6, label=_LABEL_WARM)
+
+    ax.set_xlabel("Timestep (hour)", fontsize=12)
+    ax.set_ylabel("PSNR (dB)  ↑ better", fontsize=12)
+    ax.set_title(f"{var}: PSNR — Cold vs Warm  (k={_k_val(df)})",
+                 fontsize=13, fontweight="bold")
+    _apply_grid(ax)
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    _save_figure(fig, out_stem, fmts, dpi)
+
+
+def plot_max_elem_error_timeseries(
+    df_var: pd.DataFrame, var: str, out_stem: Path,
+    fmts: Sequence[str] = ("png",), dpi: int = 150,
+) -> None:
+    """Max element-wise reconstruction error vs timestep — cold and warm."""
+    df = df_var.sort_values("timestep")
+    ts = df["timestep"].values
+
+    if "cold_max_elem_error" not in df.columns or df["cold_max_elem_error"].isna().all():
+        return
+
+    fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_H))
+    ax.plot(ts, df["cold_max_elem_error"], "o-", color=_COLD_COLOR, lw=2.2, ms=6, label=_LABEL_COLD)
+    ax.plot(ts, df["warm_max_elem_error"], "s-", color=_WARM_COLOR, lw=2.2, ms=6, label=_LABEL_WARM)
+
+    ax.set_xlabel("Timestep (hour)", fontsize=12)
+    ax.set_ylabel("Max Element-wise Error  (absolute)", fontsize=12)
+    ax.set_title(f"{var}: Max Element-wise Error — Cold vs Warm  (k={_k_val(df)})",
+                 fontsize=13, fontweight="bold")
+    _apply_grid(ax)
+    ax.legend(fontsize=10)
+    plt.tight_layout()
+    _save_figure(fig, out_stem, fmts, dpi)
+
+
+def plot_tail_error_timeseries(
+    df_var: pd.DataFrame, var: str, out_stem: Path,
+    fmts: Sequence[str] = ("png",), dpi: int = 150,
+) -> None:
+    """99th and 99.9th percentile element-wise errors vs timestep — cold and warm.
+
+    Four lines: cold 99th, warm 99th, cold 99.9th, warm 99.9th.
+    """
+    df = df_var.sort_values("timestep")
+    ts = df["timestep"].values
+
+    has_99  = "cold_pctl_99"  in df.columns and df["cold_pctl_99"].notna().any()
+    has_999 = "cold_pctl_999" in df.columns and df["cold_pctl_999"].notna().any()
+    if not has_99 and not has_999:
+        return
+
+    fig, ax = plt.subplots(figsize=(_FIG_W, _FIG_H))
+
+    if has_99:
+        ax.plot(ts, df["cold_pctl_99"],  "o-",  color=_COLD_COLOR, lw=2.2, ms=6,
+                label="Cold 99th pctl")
+        ax.plot(ts, df["warm_pctl_99"],  "s-",  color=_WARM_COLOR, lw=2.2, ms=6,
+                label="Warm 99th pctl")
+    if has_999:
+        ax.plot(ts, df["cold_pctl_999"], "o--", color=_COLD_COLOR, lw=1.6, ms=5,
+                alpha=0.7, label="Cold 99.9th pctl")
+        ax.plot(ts, df["warm_pctl_999"], "s--", color=_WARM_COLOR, lw=1.6, ms=5,
+                alpha=0.7, label="Warm 99.9th pctl")
+
+    ax.set_xlabel("Timestep (hour)", fontsize=12)
+    ax.set_ylabel("Element-wise Error  (absolute)", fontsize=12)
+    ax.set_title(f"{var}: Tail Error Percentiles — Cold vs Warm  (k={_k_val(df)})",
+                 fontsize=13, fontweight="bold")
+    _apply_grid(ax)
+    ax.legend(fontsize=10)
+    plt.tight_layout()
     _save_figure(fig, out_stem, fmts, dpi)
 
 
@@ -678,6 +767,12 @@ def plot_per_variable(
                                    fmts=fmts, dpi=dpi)
         plot_runtime_timeseries(df_v, var, out_dir / f"{var}_runtime",
                                 fmts=fmts, dpi=dpi)
+        plot_psnr_timeseries(df_v, var, out_dir / f"{var}_psnr",
+                             fmts=fmts, dpi=dpi)
+        plot_max_elem_error_timeseries(df_v, var, out_dir / f"{var}_max_elem_error",
+                                        fmts=fmts, dpi=dpi)
+        plot_tail_error_timeseries(df_v, var, out_dir / f"{var}_tail_error",
+                                    fmts=fmts, dpi=dpi)
         plot_subspace_drift_timeseries(df_v, var, out_dir / f"{var}_subspace_drift",
                                        fmts=fmts, dpi=dpi)
         plot_cold_vs_warm_subspace(df_v, var, out_dir / f"{var}_cold_vs_warm_subspace",

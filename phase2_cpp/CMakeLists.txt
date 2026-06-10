@@ -30,7 +30,7 @@ add_compile_definitions(EIGEN_USE_BLAS)
 # Compiler flags
 # ---------------------------------------------------------------------------
 if(MSVC)
-    add_compile_options(/O2 /arch:AVX2 /W3 /EHsc /MP)
+    add_compile_options(/O2 /arch:AVX2 /W3 /EHsc)
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
 else()
     add_compile_options(-O3 -march=native -Wall -Wextra)
@@ -100,5 +100,103 @@ if(WIN32 AND EXISTS "${OPENBLAS_DLL}")
             "${OPENBLAS_DLL}"
             "$<TARGET_FILE_DIR:hurricane_dumb_bench>"
         COMMENT "Copying openblas.dll to hurricane_dumb_bench output"
+    )
+endif()
+
+# ---------------------------------------------------------------------------
+# Adaptive warm residual-corrected rSVD benchmark
+# ---------------------------------------------------------------------------
+set(ADAPTIVE_SOURCES
+    src/rsvd.cpp
+    src/warm_rsvd.cpp
+    src/metrics.cpp
+    src/data_loader.cpp
+    src/adaptive_csv_writer.cpp
+    src/adaptive_experiment.cpp
+)
+
+add_executable(adaptive_bench ${ADAPTIVE_SOURCES})
+
+target_include_directories(adaptive_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENBLAS_INCLUDE_DIR}
+)
+
+target_link_libraries(adaptive_bench PRIVATE
+    Eigen3::Eigen
+    "${OPENBLAS_LIB}"
+)
+
+if(WIN32 AND EXISTS "${OPENBLAS_DLL}")
+    add_custom_command(TARGET adaptive_bench POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENBLAS_DLL}"
+            "$<TARGET_FILE_DIR:adaptive_bench>"
+        COMMENT "Copying openblas.dll to adaptive_bench output"
+    )
+endif()
+
+# ---------------------------------------------------------------------------
+# Unified single-stage adaptive rSVD benchmark — Isabel (warm) + NYX/Miranda
+# ---------------------------------------------------------------------------
+set(UNIFIED_ADAPTIVE_SOURCES
+    src/rsvd.cpp
+    src/warm_rsvd.cpp
+    src/metrics.cpp
+    src/data_loader.cpp
+    src/adaptive_csv_writer.cpp
+    src/unified_adaptive_experiment.cpp
+)
+
+add_executable(unified_adaptive_bench ${UNIFIED_ADAPTIVE_SOURCES})
+
+target_include_directories(unified_adaptive_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENBLAS_INCLUDE_DIR}
+)
+
+target_link_libraries(unified_adaptive_bench PRIVATE
+    Eigen3::Eigen
+    "${OPENBLAS_LIB}"
+)
+
+if(WIN32 AND EXISTS "${OPENBLAS_DLL}")
+    add_custom_command(TARGET unified_adaptive_bench POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENBLAS_DLL}"
+            "$<TARGET_FILE_DIR:unified_adaptive_bench>"
+        COMMENT "Copying openblas.dll to unified_adaptive_bench output"
+    )
+endif()
+
+# ---------------------------------------------------------------------------
+# Static (single-snapshot) adaptive rSVD benchmark — NYX / Miranda (cold-only)
+# ---------------------------------------------------------------------------
+set(STATIC_ADAPTIVE_SOURCES
+    src/rsvd.cpp
+    src/metrics.cpp
+    src/data_loader.cpp
+    src/adaptive_csv_writer.cpp
+    src/static_adaptive_experiment.cpp
+)
+
+add_executable(static_adaptive_bench ${STATIC_ADAPTIVE_SOURCES})
+
+target_include_directories(static_adaptive_bench PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${OPENBLAS_INCLUDE_DIR}
+)
+
+target_link_libraries(static_adaptive_bench PRIVATE
+    Eigen3::Eigen
+    "${OPENBLAS_LIB}"
+)
+
+if(WIN32 AND EXISTS "${OPENBLAS_DLL}")
+    add_custom_command(TARGET static_adaptive_bench POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OPENBLAS_DLL}"
+            "$<TARGET_FILE_DIR:static_adaptive_bench>"
+        COMMENT "Copying openblas.dll to static_adaptive_bench output"
     )
 endif()

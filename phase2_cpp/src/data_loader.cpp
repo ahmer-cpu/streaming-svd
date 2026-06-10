@@ -60,3 +60,51 @@ MatF load_bin_matrix(const std::string& path) {
 
     return A;   // (250000, 100)
 }
+
+// ---------------------------------------------------------------------------
+// Generic single-snapshot loader for the SDRBench cubes (NYX, Miranda).
+//
+// The cube is flattened C-order with the outermost (slowest-varying) axis as
+// the matrix columns, so column j occupies the contiguous element range
+// [j*n_rows, (j+1)*n_rows).  Eigen is column-major, so each column copies as a
+// single contiguous block.  When is_double, the file holds little-endian
+// float64 that we downcast to float32 to feed the existing MatF pipeline.
+// ---------------------------------------------------------------------------
+MatF load_static_matrix(const std::string& path, Idx n_rows, int n_cols, bool is_double) {
+    const std::size_t total =
+        static_cast<std::size_t>(n_rows) * static_cast<std::size_t>(n_cols);
+
+    std::ifstream f(path, std::ios::binary);
+    if (!f)
+        throw std::runtime_error("load_static_matrix: cannot open '" + path + "'");
+
+    MatF A(n_rows, n_cols);
+
+    if (is_double) {
+        std::vector<double> buf(total);
+        const std::size_t bytes = total * sizeof(double);
+        f.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(bytes));
+        if (!f)
+            throw std::runtime_error("load_static_matrix: short read on '" + path +
+                                     "' (expected " + std::to_string(bytes) + " bytes)");
+        for (int j = 0; j < n_cols; ++j) {
+            const double* src = buf.data() + static_cast<std::size_t>(j) * n_rows;
+            for (Idx i = 0; i < n_rows; ++i)
+                A(i, j) = static_cast<float>(src[i]);
+        }
+    } else {
+        std::vector<float> buf(total);
+        const std::size_t bytes = total * sizeof(float);
+        f.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(bytes));
+        if (!f)
+            throw std::runtime_error("load_static_matrix: short read on '" + path +
+                                     "' (expected " + std::to_string(bytes) + " bytes)");
+        for (int j = 0; j < n_cols; ++j) {
+            Eigen::Map<const Eigen::VectorXf> col(
+                buf.data() + static_cast<std::size_t>(j) * n_rows, n_rows);
+            A.col(j) = col;
+        }
+    }
+
+    return A;
+}

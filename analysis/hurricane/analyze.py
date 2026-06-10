@@ -37,7 +37,10 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from streaming_svd.data import HURRICANE_VARIABLES
+HURRICANE_VARIABLES = (
+    "CLOUDf", "Pf", "PRECIPf", "QCLOUDf", "QGRAUPf", "QICEf",
+    "QRAINf", "QSNOWf", "QVAPORf", "TCf", "Uf", "Vf", "Wf",
+)
 
 # ---------------------------------------------------------------------------
 # Column lists
@@ -83,6 +86,25 @@ _SUMMARY_COLUMNS: List[str] = [
     "fraction_warm_better_fro",
     "cold_fro_overhead_mean",
     "warm_fro_overhead_mean",
+    # Compression quality
+    "cold_max_elem_error_mean",
+    "cold_max_elem_error_std",
+    "cold_max_elem_error_max",
+    "warm_max_elem_error_mean",
+    "warm_max_elem_error_std",
+    "warm_max_elem_error_max",
+    "cold_psnr_mean",
+    "cold_psnr_std",
+    "warm_psnr_mean",
+    "warm_psnr_std",
+    "cold_pctl_99_mean",
+    "cold_pctl_99_max",
+    "warm_pctl_99_mean",
+    "warm_pctl_99_max",
+    "cold_pctl_999_mean",
+    "cold_pctl_999_max",
+    "warm_pctl_999_mean",
+    "warm_pctl_999_max",
     # Subspace (Frobenius metrics only — spectral variants saturate to ~1 for rank > 1)
     "warm_drift_fro_mean",
     "warm_drift_fro_std",
@@ -336,6 +358,29 @@ def compute_variable_summary(df_var: pd.DataFrame) -> Dict[str, object]:
 
     row["cold_fro_overhead_mean"] = _safe_mean(_col(good, "cold_fro_overhead"))
     row["warm_fro_overhead_mean"] = _safe_mean(_col(good, "warm_fro_overhead"))
+
+    # --- Max element-wise reconstruction error ---
+    row["cold_max_elem_error_mean"] = _safe_mean(_col(good, "cold_max_elem_error"))
+    row["cold_max_elem_error_std"]  = _safe_std(_col(good, "cold_max_elem_error"))
+    row["cold_max_elem_error_max"]  = _safe_max(_col(good, "cold_max_elem_error"))
+    row["warm_max_elem_error_mean"] = _safe_mean(_col(good, "warm_max_elem_error"))
+    row["warm_max_elem_error_std"]  = _safe_std(_col(good, "warm_max_elem_error"))
+    row["warm_max_elem_error_max"]  = _safe_max(_col(good, "warm_max_elem_error"))
+
+    row["cold_psnr_mean"]  = _safe_mean(_col(good, "cold_psnr"))
+    row["cold_psnr_std"]   = _safe_std(_col(good, "cold_psnr"))
+    row["warm_psnr_mean"]  = _safe_mean(_col(good, "warm_psnr"))
+    row["warm_psnr_std"]   = _safe_std(_col(good, "warm_psnr"))
+
+    row["cold_pctl_99_mean"]  = _safe_mean(_col(good, "cold_pctl_99"))
+    row["cold_pctl_99_max"]   = _safe_max(_col(good, "cold_pctl_99"))
+    row["warm_pctl_99_mean"]  = _safe_mean(_col(good, "warm_pctl_99"))
+    row["warm_pctl_99_max"]   = _safe_max(_col(good, "warm_pctl_99"))
+
+    row["cold_pctl_999_mean"] = _safe_mean(_col(good, "cold_pctl_999"))
+    row["cold_pctl_999_max"]  = _safe_max(_col(good, "cold_pctl_999"))
+    row["warm_pctl_999_mean"] = _safe_mean(_col(good, "warm_pctl_999"))
+    row["warm_pctl_999_max"]  = _safe_max(_col(good, "warm_pctl_999"))
 
     # --- Subspace (Frobenius metrics; spectral variants omitted — they saturate for rank > 1) ---
     drift_fro = _col(good, "warm_drift_fro").dropna()

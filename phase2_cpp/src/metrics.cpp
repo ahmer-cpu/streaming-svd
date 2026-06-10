@@ -121,6 +121,111 @@ float spec_error(const MatF& A, const MatF& U, int n_iter) {
 }
 
 // ---------------------------------------------------------------------------
+// Absolute spectral norm of the residual: ||(I - U U^T) A||_2
+// ---------------------------------------------------------------------------
+float spectral_norm_residual(const MatF& A, const MatF& U, int n_iter) {
+    // Power iteration on M = (I - U U^T) A A^T (I - U U^T).
+    // Identical to the residual loop in spec_error() but skips the second
+    // norm_A power iteration — we only need sqrt(lambda1), not the ratio.
+    Idx m = A.rows();
+
+    VecF v = VecF::Ones(m);
+    v /= v.norm();
+
+    for (int i = 0; i < n_iter; ++i) {
+        VecF w = A.transpose() * v;
+        VecF u = A * w;
+        u -= U * (U.transpose() * u);
+        if (u.norm() < 1e-12f) break;
+        v = u / u.norm();
+    }
+
+    // Rayleigh quotient: v^T M v = lambda1 = ||(I - U U^T) A||_2^2
+    VecF w = A.transpose() * v;
+    VecF u = A * w;
+    u -= U * (U.transpose() * u);
+    double lambda1 = v.cast<double>().dot(u.cast<double>());
+    lambda1 = std::max(0.0, lambda1);
+
+    return static_cast<float>(std::sqrt(lambda1));
+}
+
+// ---------------------------------------------------------------------------
+// Compression-quality metrics (single pass)
+// ---------------------------------------------------------------------------
+CompressionMetrics compression_metrics(const MatF& A, const MatF& U, const VecF& s,
+                                       const MatF& Vt, float sigma_kp1_upper) {
+    // Column-by-column pass: collect all |A_ij - recon_ij| values, track
+    // max, sum-of-squares, and build a buffer for percentiles.
+    const Idx m = A.rows();
+    const Idx n = A.cols();
+    const Idx total = m * n;
+
+    std::vector<float> abs_errs;
+    abs_errs.reserve(static_cast<size_t>(total));
+
+    float max_err = 0.0f;
+    double sum_sq = 0.0;        // MSE accumulator in double
+    float peak = A.cwiseAbs().maxCoeff();   // max|A| for PSNR
+
+    VecF scaled(U.cols());
+    for (Idx j = 0; j < n; ++j) {
+        scaled.array() = s.array() * Vt.col(j).array();
+        VecF diff = A.col(j) - U * scaled;
+
+        for (Idx i = 0; i < m; ++i) {
+            float ae = std::abs(diff(i));
+            abs_errs.push_back(ae);
+            sum_sq += static_cast<double>(ae) * static_cast<double>(ae);
+            if (ae > max_err) max_err = ae;
+        }
+    }
+
+    // MSE and PSNR
+    double mse = sum_sq / static_cast<double>(total);
+    float psnr;
+    if (mse < 1e-30 || peak < 1e-30f) {
+        psnr = std::numeric_limits<float>::infinity();   // perfect reconstruction
+    } else {
+        psnr = static_cast<float>(10.0 * std::log10(
+            static_cast<double>(peak) * static_cast<double>(peak) / mse));
+    }
+
+    // Percentiles via nth_element (O(n) average, no full sort)
+    auto pctl = [&](double p) -> float {
+        size_t idx = static_cast<size_t>(p * static_cast<double>(abs_errs.size() - 1));
+        idx = std::min(idx, abs_errs.size() - 1);
+        std::nth_element(abs_errs.begin(), abs_errs.begin() + idx, abs_errs.end());
+        return abs_errs[idx];
+    };
+
+    float p99  = pctl(0.99);
+    float p999 = pctl(0.999);
+
+    // -----------------------------------------------------------------------
+    // Leverage-score bound (Level 2 of the error hierarchy)
+    //   tau_i     = ||(U_k)_{i,:}||^2   (top-k row leverage score, spatial)
+    //   tau_j^V   = ||(V_k)_{j,:}||^2   (top-k row leverage score, z-level)
+    //   bound     = sigma_kp1_upper * sqrt((1 - min tau_U) * (1 - min tau_V))
+    // -----------------------------------------------------------------------
+    // U  is (m × k): row norms give tau_i for each spatial point.
+    float min_lev_U = U.rowwise().squaredNorm().minCoeff();
+
+    // Vt is (k × n): column norms give tau_j for each z-level
+    // (columns of Vt = rows of V_k).
+    float min_lev_V = Vt.colwise().squaredNorm().minCoeff();
+
+    float lev_bound = 0.0f;
+    if (sigma_kp1_upper > 0.0f) {
+        float deficit_U = std::max(0.0f, 1.0f - min_lev_U);
+        float deficit_V = std::max(0.0f, 1.0f - min_lev_V);
+        lev_bound = sigma_kp1_upper * std::sqrt(deficit_U * deficit_V);
+    }
+
+    return {max_err, psnr, p99, p999, min_lev_U, min_lev_V, lev_bound};
+}
+
+// ---------------------------------------------------------------------------
 // Principal angles between subspaces
 // ---------------------------------------------------------------------------
 void subspace_sin_theta(const MatF& U1, const MatF& U2,

@@ -44,6 +44,14 @@ public:
         float cold_fro_overhead  = std::numeric_limits<float>::quiet_NaN();
         float warm_fro_overhead  = std::numeric_limits<float>::quiet_NaN();
         float cold_spec_gap      = std::numeric_limits<float>::quiet_NaN();
+        float cold_max_elem_error = std::numeric_limits<float>::quiet_NaN();
+        float warm_max_elem_error = std::numeric_limits<float>::quiet_NaN();
+        float cold_psnr           = std::numeric_limits<float>::quiet_NaN();
+        float warm_psnr           = std::numeric_limits<float>::quiet_NaN();
+        float cold_pctl_99        = std::numeric_limits<float>::quiet_NaN();
+        float warm_pctl_99        = std::numeric_limits<float>::quiet_NaN();
+        float cold_pctl_999       = std::numeric_limits<float>::quiet_NaN();
+        float warm_pctl_999       = std::numeric_limits<float>::quiet_NaN();
 
         // --- Subspace quality ---
         float warm_drift_spec              = std::numeric_limits<float>::quiet_NaN();
@@ -96,13 +104,23 @@ public:
         int  cold_stats_p         = 0;
         int  warm_stats_r_prev    = 0;
         bool warm_stats_warm_start = false;
+
+        // --- Error-bound hierarchy (8) ---
+        float cold_spectral_bound = std::numeric_limits<float>::quiet_NaN(); ///< ||(I-U_cold U_cold^T)A||_2
+        float warm_spectral_bound = std::numeric_limits<float>::quiet_NaN(); ///< ||(I-U_warm U_warm^T)A||_2
+        float cold_leverage_bound = std::numeric_limits<float>::quiet_NaN(); ///< leverage-score upper bound on cold max error
+        float warm_leverage_bound = std::numeric_limits<float>::quiet_NaN(); ///< leverage-score upper bound on warm max error
+        float cold_min_leverage_U = std::numeric_limits<float>::quiet_NaN(); ///< min_i ||(U_cold_k)_{i,:}||^2
+        float warm_min_leverage_U = std::numeric_limits<float>::quiet_NaN(); ///< min_i ||(U_warm_k)_{i,:}||^2
+        float cold_min_leverage_V = std::numeric_limits<float>::quiet_NaN(); ///< min_j ||(V_cold_k)_{j,:}||^2
+        float warm_min_leverage_V = std::numeric_limits<float>::quiet_NaN(); ///< min_j ||(V_warm_k)_{j,:}||^2
     };
 
     /// Write one row and flush to disk immediately.
     void write_row(const RowData& row);
 
     /// Column count (for validation).
-    static constexpr int NUM_COLS = 61;
+    static constexpr int NUM_COLS = 77;
 
 private:
     std::ofstream out_;

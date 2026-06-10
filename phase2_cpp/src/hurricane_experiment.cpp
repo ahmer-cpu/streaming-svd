@@ -32,7 +32,7 @@ static const std::vector<std::string> ALL_VARS = {
 // Simple CLI argument parser
 // ---------------------------------------------------------------------------
 struct Config {
-    std::string              data_dir  = "data/raw";
+    std::string              data_dir  = "data/ISABEL_raw";
     std::string              out_dir   = "results/hurricane/raw";
     std::vector<std::string> vars      = ALL_VARS;
     int                      start_t   = 1;
@@ -47,7 +47,7 @@ struct Config {
 static void print_usage(const char* prog) {
     std::cerr
         << "Usage: " << prog << " [options]\n"
-        << "  --data-dir  <path>        Root data directory          (default: data/raw)\n"
+        << "  --data-dir  <path>        Root data directory          (default: data/ISABEL_raw)\n"
         << "  --out-dir   <path>        Output CSV directory         (default: results/hurricane/raw)\n"
         << "  --vars      v1 v2 ...     Variable names (space-sep)   (default: all 13)\n"
         << "  --start     <int>         First timestep (1-indexed)   (default: 1)\n"
@@ -200,6 +200,15 @@ int main(int argc, char* argv[]) {
             float cold_spec = spec_error(A, cold.U);
             float warm_spec = spec_error(A, warm.U);
 
+            // Absolute spectral residual norms — upper bounds on sigma_{k+1}(A).
+            // Used both as the Level-1 spectral bound on max error and as the
+            // sigma_kp1_upper input for the Level-2 leverage-score bound.
+            float cold_snr = spectral_norm_residual(A, cold.U);
+            float warm_snr = spectral_norm_residual(A, warm.U);
+
+            CompressionMetrics cold_cm = compression_metrics(A, cold.U, cold.s, cold.Vt, cold_snr);
+            CompressionMetrics warm_cm = compression_metrics(A, warm.U, warm.s, warm.Vt, warm_snr);
+
             // Subspace metrics (require U_warm_prev from PREVIOUS step)
             float warm_drift_spec    = std::numeric_limits<float>::quiet_NaN();
             float warm_drift_fro     = std::numeric_limits<float>::quiet_NaN();
@@ -246,6 +255,24 @@ int main(int argc, char* argv[]) {
             row.cold_fro_overhead = (opt_fro > 0) ? cold_fro / opt_fro - 1.0f : std::numeric_limits<float>::quiet_NaN();
             row.warm_fro_overhead = (opt_fro > 0) ? warm_fro / opt_fro - 1.0f : std::numeric_limits<float>::quiet_NaN();
             row.cold_spec_gap     = warm_spec - cold_spec;
+            row.cold_max_elem_error = cold_cm.max_elem_error;
+            row.warm_max_elem_error = warm_cm.max_elem_error;
+            row.cold_psnr           = cold_cm.psnr;
+            row.warm_psnr           = warm_cm.psnr;
+            row.cold_pctl_99        = cold_cm.pctl_99;
+            row.warm_pctl_99        = warm_cm.pctl_99;
+            row.cold_pctl_999       = cold_cm.pctl_999;
+            row.warm_pctl_999       = warm_cm.pctl_999;
+
+            // Error-bound hierarchy
+            row.cold_spectral_bound = cold_snr;
+            row.warm_spectral_bound = warm_snr;
+            row.cold_leverage_bound = cold_cm.leverage_bound;
+            row.warm_leverage_bound = warm_cm.leverage_bound;
+            row.cold_min_leverage_U = cold_cm.min_leverage_U;
+            row.warm_min_leverage_U = warm_cm.min_leverage_U;
+            row.cold_min_leverage_V = cold_cm.min_leverage_V;
+            row.warm_min_leverage_V = warm_cm.min_leverage_V;
 
             // Subspace
             row.warm_drift_spec             = warm_drift_spec;
@@ -314,6 +341,10 @@ int main(int argc, char* argv[]) {
                           << "  speedup=" << std::setprecision(3) << row.time_speedup_ratio;
             std::cout << "  cold_err=" << std::setprecision(5) << cold_fro
                       << "  warm_err=" << warm_fro
+                      << "  cold_maxe=" << cold_cm.max_elem_error
+                      << "  warm_maxe=" << warm_cm.max_elem_error
+                      << "  cold_psnr=" << std::setprecision(1) << cold_cm.psnr << "dB"
+                      << "  warm_psnr=" << warm_cm.psnr << "dB"
                       << "\n";
 
             // ------------------------------------------------------------------

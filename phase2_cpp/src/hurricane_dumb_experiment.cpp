@@ -32,7 +32,7 @@ static const std::vector<std::string> ALL_VARS = {
 // Simple CLI argument parser
 // ---------------------------------------------------------------------------
 struct Config {
-    std::string              data_dir  = "data/raw";
+    std::string              data_dir  = "data/ISABEL_raw";
     std::string              out_dir   = "results/hurricane/raw_dumb";
     std::vector<std::string> vars      = ALL_VARS;
     int                      start_t   = 1;
@@ -47,7 +47,7 @@ struct Config {
 static void print_usage(const char* prog) {
     std::cerr
         << "Usage: " << prog << " [options]\n"
-        << "  --data-dir  <path>        Root data directory          (default: data/raw)\n"
+        << "  --data-dir  <path>        Root data directory          (default: data/ISABEL_raw)\n"
         << "  --out-dir   <path>        Output CSV directory         (default: results/hurricane/raw_dumb)\n"
         << "  --vars      v1 v2 ...     Variable names (space-sep)   (default: all 13)\n"
         << "  --start     <int>         First timestep (1-indexed)   (default: 1)\n"

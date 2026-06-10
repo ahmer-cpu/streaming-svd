@@ -41,49 +41,49 @@ This repository provides a framework for implementing and evaluating streaming S
 ```
 streaming-svd/
 ├── README.md                          # Project documentation
-├── pyproject.toml                     # Project configuration and dependencies
+├── CLAUDE.md                          # Guidance for Claude Code
 ├── .gitignore                         # Git ignore rules
 │
-├── src/
-│   └── streaming_svd/                 # Main package
-│       ├── __init__.py                # Package initialization
-│       │
-│       ├── algos/                     # SVD and rSVD algorithms
-│       │   └── __init__.py
-│       │
-│       ├── data/                      # Data loading and preprocessing
-│       │   └── __init__.py
-│       │
-│       ├── experiments/               # Experiment runners and benchmarks
-│       │   └── __init__.py
-│       │
-│       └── utils/                     # Common utilities (logging, timing, I/O)
-│           └── __init__.py
+├── phase2_cpp/                        # ** ACTIVE ** C++ CPU implementation (Eigen + OpenBLAS)
+│   ├── include/                       #   Headers: rsvd.hpp, warm_rsvd.hpp, metrics.hpp, ...
+│   ├── src/                           #   Sources: rsvd.cpp, warm_rsvd.cpp, hurricane_experiment.cpp, ...
+│   ├── CMakeLists.txt                 #   Build system
+│   └── vcpkg.json                     #   Dependency manifest
 │
-├── tests/                             # Unit tests
-│   └── __init__.py
+├── analysis/                         # Python analysis/plotting on C++ output CSVs
+│   └── hurricane/
+│       ├── analyze.py                #   Aggregate raw CSVs into summary statistics
+│       ├── plot.py                   #   Generate figures from CSVs
+│       └── plot_adaptive.py          #   Figures for the adaptive-rank experiment
 │
-├── data/                              # Data directory
-│   ├── raw/                           # Original data (not tracked in git)
-│   ├── interim/                       # Intermediate processed data
-│   └── processed/                     # Final processed data
+├── phase1_python_prototype/          # Archived Python/PyTorch prototype (Phase 1 — complete)
+│   ├── src/streaming_svd/            #   Original package: algos/, sims/, experiments/, data/, utils/
+│   ├── tests/                        #   pytest tests
+│   ├── notebooks/                    #   Exploratory Jupyter notebooks
+│   ├── scripts/                      #   Plotting scripts for preliminary sweeps
+│   └── pyproject.toml                #   Python package metadata
 │
-├── results/                           # Experiment results
-│   └── figures/                       # Generated figures and plots
+├── scripts/                          # Parameter-sweep driver + analysis (run_sweep.py, analyze_sweep.py)
 │
-├── notebooks/                         # Jupyter notebooks (exploratory)
+├── data/                             # Datasets (raw float32 binaries, not tracked in git)
+│   ├── ISABEL_raw/                   #   Hurricane Isabel: 13 vars × 48 timesteps, {VAR}/{VAR}{T:02d}.bin
+│   ├── MIRANDA_raw/                  #   Miranda dataset
+│   └── NYX_raw/                      #   Nyx dataset
 │
-├── scripts/                           # CLI scripts (if any)
+├── results/                          # Output CSVs and figures (not tracked in git)
+│   ├── hurricane/                    #   C++ benchmark outputs (raw_cpp/, figures_cpp/, ...)
+│   ├── sweep/                        #   Parameter-sweep outputs
+│   └── preliminary/                  #   Phase 1 Python sweep results
 │
-└── docs/                              # Documentation (if any)
+└── docs/                             # Documentation
 ```
 
-### Module Descriptions
+### Layout Notes
 
-- **`algos`**: Core SVD and randomized SVD algorithms. Place algorithm implementations here.
-- **`data`**: Dataset utilities, loaders, and preprocessing functions. Place data I/O code here.
-- **`experiments`**: Experiment runners, benchmarks, and evaluation scripts. Place benchmark code here.
-- **`utils`**: Common utilities including timing, logging, and file I/O helpers.
+- **`phase2_cpp/`** — the active codebase: cold-start (Halko) vs. warm-start (Brand) rSVD in C++, built with CMake + Eigen + OpenBLAS.
+- **`analysis/hurricane/`** — Python scripts that aggregate and plot the per-timestep CSVs emitted by the C++ benchmark.
+- **`phase1_python_prototype/`** — the original PyTorch prototype, archived for reference; not under active development.
+- **`data/`** — three raw datasets (`ISABEL_raw`, `MIRANDA_raw`, `NYX_raw`); binaries are not tracked in git.
 
 ## Usage
 
