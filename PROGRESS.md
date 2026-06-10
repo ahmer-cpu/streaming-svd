@@ -156,19 +156,54 @@ A_hat = L1 (rank k*) + L2 (rank r*) + S (sparse corrections)
 
 ---
 
-### Phase 4 — Unified Single-Stage Compressor (June 2026) [IN PROGRESS]
+### Phase 4 — Unified Single-Stage Compressor (June 2026) [EXPERIMENTS COMPLETE — presentation in prep]
 
 | Date | Milestone |
 |------|-----------|
 | Jun 2026 | Redundancy analysis of the two-stage (L1+L2+S) design against the Phase-3 result data. |
 | Jun 2026 | Implemented `unified_adaptive_bench`: one single-stage driver (L + S) for Isabel (warm) and NYX/Miranda (cold). Back-ported the incremental-reconstruction sweep + exact prune into the legacy two-stage driver (bit-identical selections, 3–9x faster stage 1). |
 | Jun 2026 | Added `--mode cold` control arm + `scripts/run_isabel_sweep.py`. Experiment design locked (see below). |
+| 2026-06-10 | **Full benchmark run complete** (commit `b0253dd`): Isabel 4 vars × 3 eps × warm/cold (2304 snapshots) + NYX/Miranda all vars × 3 eps (39 runs). Tau guarantee verified on every row. Analysis tooling: `analyze_unified.py` (warm-vs-cold tables, overlays, heatmaps). |
+| 2026-06-10 | Presentation (`docs/latex/slides/main.tex`) refactored for SVD-06: second half rebuilt around the unified algorithm, design evolution, experiment design, and new results (54 slides). |
 
 **Phase-4 experiment design:**
 - **Isabel**: 4 featured variables only (Uf, TCf, QVAPORf, QRAINf; expand later), t=1..48, eps in {1e-2, 1e-3, 1e-4} with **per-timestep tau = eps * range(A_t)**, in BOTH modes: `warm` (streaming, U_prev carried) and `cold` (standalone bootstrap per timestep) — the adaptive warm-vs-cold comparison. t=1 rows are identical in both arms (same seed) — built-in sanity check. Because the arms may pick different k*, compare at the system level (total bytes, total time, fidelity at chosen storage), not same-k quality. Runner: `scripts/run_isabel_sweep.py` -> `results/hurricane/unified/isabel_all.csv` (+ `mode`, `eps` columns).
 - **NYX + Miranda**: all variables, same eps grid, cold/static path. Runner: `scripts/run_static_sweep.py` (unified default) -> `results/static/static_all_unified.csv`.
 - Metric battery per row (59-col schema): k*, search window, violations, sparse/rank/total bytes, compression ratio, selection time, warm flag, fro error + optimal-fro overhead, PSNR (rank-only and combined), tail percentiles, max elementwise error vs tau.
 - Smoke evidence (Uf, eps=1e-3, t=1..3): warm matches cold's k*=28 with ~10% fewer violations, ~1.5% smaller totals, ~15% less time.
+
+#### Phase 4 Key Results (full run, 2026-06-10)
+
+**Isabel warm vs cold (paired by timestep, t >= 2):** the warm advantage has a clean
+**regime structure** governed by tolerance:
+
+| Var | eps | Speedup | Bytes saved | Viol. reduced | dPSNR | Same k* |
+|-----|-----|---------|-------------|----------------|-------|---------|
+| Uf      | 1e-4 | **1.66x** | **21.1%** | **70.2%** | **+2.19 dB** | 21% |
+| TCf     | 1e-4 | **1.94x** | **8.4%**  | **39.2%** | **+1.15 dB** | 47% |
+| QVAPORf | 1e-4 | **1.53x** | **3.8%**  | **34.6%** | **+1.06 dB** | 53% |
+| QRAINf  | all  | **2.0–3.4x** | ~0%   | ~0%       | ~0 dB        | 98–100% |
+
+- **Loose/mid eps (1e-2, 1e-3):** both arms find the same k* at 87–100% of timesteps;
+  warm wins on **speed alone** (1.1–3.4x; one anomaly: Uf eps=1e-3 at 0.95x while still
+  saving 3.3% bytes / +0.6 dB).
+- **Tight eps (1e-4) mechanism:** optimal ranks (~50–67) exceed the cold bootstrap cap, so
+  cold hits window expansion at **22–44 of 48 timesteps** vs warm's **0–1** — warm tracking
+  carries the high rank forward. On Uf, warm picks a *higher* mean rank (67.3 vs 64.2) yet
+  stores 21% fewer bytes: the better subspace deletes violations faster than rank costs.
+- **QRAINf** (the variable warm-start "failed" on in fixed-rank) now matches cold exactly
+  while running 2–3.4x faster — the adaptive algorithm + warm window is pure speed there.
+
+**Static datasets:** Miranda — all 7 variables compressible at every eps (k* 10–49,
+ratios 4.8–22.6x). NYX — split regimes: density fields collapse to k*=1 + sparse
+(baryon_density up to **504x**); velocity/temperature at eps=1e-4 land at **ratio
+0.34–0.45 (< 1)** — see backlog flag 7 (store-raw fallback / cost-model frontier).
+
+**Tau guarantee:** `combined_max_elem_error <= tau` holds on **all 2304 Isabel rows
+(both arms) + 39 static rows** — verified by the analysis scripts' built-in check.
+
+Tables: `results/hurricane/figures_unified/{unified_summary,warm_vs_cold_deltas}.csv`,
+`results/static/static_summary_unified.csv`.
 
 **Why stage 2 was removed (evidence from Phase-3 CSVs):**
 - Stage 2 changed the outcome in 4/39 static runs and ~8% of hurricane timesteps, always with r* in {1, 2}.
@@ -189,7 +224,8 @@ A_hat = L1 (rank k*) + L2 (rank r*) + S (sparse corrections)
 4. **fine_radius / grid-step coupling** — the ±3 fine sweep brackets exactly because the coarse step is 4; if the grid is ever coarsened the radius must track it (or item 3 makes the bracket moot).
 5. **c_entry = 12 B/entry cost model** — naive COO assumption; eyewall violations are spatially clustered, so a real sparse encoder pays less, which would shift all optima toward lower rank. Revisit with the Phase-4 compression-backend work.
 6. **Legacy drivers** (`adaptive_bench`, `static_adaptive_bench`) kept until the head-to-head benchmark is run, then archive.
-7. **Warm-state policy (`U_prev`) alternatives** — today we carry exactly the k* stored columns from t-1 (principled: encoder state = decoder-reconstructible from the compressed stream). Ideas to test later:
+7. **Store-raw fallback / ratio < 1 (finding, June 2026 full run)** — at eps=1e-4 the NYX velocity fields and temperature land at compression ratio 0.34-0.45: the cost optimum (rank + 92-131M sparse entries) EXCEEDS the original size. The optimizer is correct — these fields are simply not low-rank-compressible at that tolerance under the c_entry=12 model — but a production compressor should fall back to storing raw when total >= original_bytes. Flag in the presentation as an honest negative result + motivation for the compression-backend work (item 5).
+8. **Warm-state policy (`U_prev`) alternatives** — today we carry exactly the k* stored columns from t-1 (principled: encoder state = decoder-reconstructible from the compressed stream). Ideas to test later:
    - **Carry all k_hi computed columns (or k* + fine_radius)** — free at t-1, shrinks the random padding `p_needed = k_hi - r_prev + p_warm`, directly attacks warm-sketch dilution at `k_expanded` timesteps. Caveat: the columns above k* are the least accurate (sketch-error tail) and widen the warm matmuls. One-line change; hypothesis = better quality/cost on expansion steps.
    - **V_prev warm start** — `Y = A @ V_prev` is ONE matmul vs two for `A @ (A^T @ U_prev)`, and Isabel's V (z-mixing, 100 x k) is likely very stable. But the current scheme implicitly applies one power iteration on the NEW data (`(A A^T) U_prev`), which self-corrects subspace drift; `A @ V_prev` is a plain projection without that. Cheaper vs more robust.
    - **Multi-step state** (orthogonalize [U_{t-1} | U_{t-2}] or Grassmannian extrapolation) — only worth it if some variable shows oscillating subspaces; backlog.
@@ -205,6 +241,7 @@ A_hat = L1 (rank k*) + L2 (rank r*) + S (sparse corrections)
 3. **SVD 03 — Hurricane Benchmark** (Apr 2026): Full Hurricane Isabel performance evaluation across all 13 variables.
 4. **SVD 04 — Compression Fidelity** (May 2026): PSNR and reconstruction quality across all 13 variables, error-bound hierarchy analysis.
 5. **SVD 05 — Adaptive Compression** (May 2026): Adaptive error-bounded three-layer decomposition (L1+L2+S) with tolerance-guaranteed compression.
+6. **SVD 06 — Unified Single-Stage Compressor** (June 2026, in prep): design evolution from L1+L2+S to L+S, coarse-to-fine rank search, adaptive warm-vs-cold on Isabel, NYX/Miranda static results, ratio<1 negative result. Slides: `docs/latex/slides/main.tex`.
 
 ---
 
@@ -215,7 +252,11 @@ A_hat = L1 (rank k*) + L2 (rank r*) + S (sparse corrections)
 | Raw per-timestep CSVs (C++, 77 cols) | `results/hurricane/raw_cpp/` |
 | Raw per-timestep CSVs (Python, archived) | `results/hurricane/raw/` |
 | Naive warm-start CSVs | `results/hurricane/raw_dumb/` |
-| Adaptive experiment CSVs (59 cols) | `results/hurricane/adaptive/` |
+| Adaptive experiment CSVs (59 cols, two-stage legacy) | `results/hurricane/adaptive/` |
+| Unified Isabel warm/cold CSVs + concat | `results/hurricane/unified/` (`isabel_all.csv`) |
+| Unified static CSVs + concat | `results/{nyx,miranda}/unified/`, `results/static/static_all_unified.csv` |
+| Unified summary tables | `results/hurricane/figures_unified/*.csv`, `results/static/static_summary_unified.csv` |
+| Unified figures (warm-vs-cold, heatmaps, vs-eps) | `results/hurricane/figures_unified/`, `results/static/figures_unified/` |
 | Summary statistics | `results/hurricane/hurricane_summary_cpp.csv` |
 | Parameter sweep results | `results/sweep/` |
 | Fixed-rank figures (PNG + PDF) | `results/hurricane/figures_cpp/` |
@@ -284,4 +325,4 @@ Study the connection between POD and the streaming SVD framework. POD is the sta
 
 ---
 
-*Last updated: 2026-06-01*
+*Last updated: 2026-06-10*

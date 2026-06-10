@@ -1,7 +1,17 @@
-# Hurricane SVD C++ Benchmark
+# Streaming SVD C++ Benchmarks
 
-C++ reimplementation of the hurricane cold- vs warm-start rSVD experiment.
-Removes all Python/PyTorch overhead from timing measurements.
+C++ implementation of the cold- vs warm-start rSVD experiments and the adaptive
+error-bounded compressor. Removes all Python/PyTorch overhead from timing measurements.
+
+## Executables
+
+| Target | Status | Purpose |
+|--------|--------|---------|
+| `unified_adaptive_bench` | **active** | Single-stage adaptive compressor `A_hat = L(rank k*) + S(sparse)` with hard guarantee `\|\|A - A_hat\|\|_max <= tau`. One driver: `--dataset isabel` (temporal; `--mode warm\|cold`) and `--dataset nyx\|miranda` (static, cold). |
+| `adaptive_bench` | legacy baseline | Two-stage (L1+L2+S) adaptive driver for Isabel (superseded June 2026). |
+| `static_adaptive_bench` | legacy baseline | Two-stage adaptive driver for NYX/Miranda. |
+| `hurricane_bench` | Phase 2 | Fixed-rank cold-vs-warm rSVD benchmark (all 13 Isabel variables). |
+| `hurricane_dumb_bench` | control | Fixed-rank cold vs naive warm-start variant. |
 
 ## Prerequisites
 
@@ -21,7 +31,7 @@ C:\vcpkg\bootstrap-vcpkg.bat
 ### 2. Install dependencies via vcpkg
 
 ```powershell
-cd E:\PhD Year 2\SVD Project\streaming-svd\cpp
+cd E:\PhD Year 2\SVD Project\streaming-svd\phase2_cpp
 C:\vcpkg\vcpkg install --triplet x64-windows
 ```
 
@@ -32,27 +42,50 @@ This reads `vcpkg.json` and installs Eigen3 and OpenBLAS automatically.
 ```powershell
 cd E:\PhD Year 2\SVD Project\streaming-svd
 
-cmake -B cpp/build -S cpp `
+cmake -B phase2_cpp/build -S phase2_cpp `
       -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
       -DVCPKG_TARGET_TRIPLET=x64-windows `
       -DCMAKE_BUILD_TYPE=Release
 
-cmake --build cpp/build --config Release
+cmake --build phase2_cpp/build --config Release
 ```
 
-The executable will be at `cpp/build/Release/hurricane_bench.exe`.
+Executables land in `phase2_cpp/build/Release/`.
 
 ## Usage
 
+### Adaptive compressor (unified, active)
+
+```powershell
+# Isabel, warm-started streaming, absolute tolerance
+./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+    --dataset isabel --vars Uf TCf --start 1 --end 48 --tau 1.0
+
+# Isabel cold control arm, per-snapshot relative tolerance
+./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+    --dataset isabel --mode cold --tau-mode vrel --eps 1e-3
+
+# NYX / Miranda (static, cold)
+./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+    --dataset miranda --tau-mode vrel --eps 1e-3
+```
+
+Key options: `--k-max-init` (bootstrap rank cap), `--k-delta` (warm window
+half-width), `--k-expand` (window growth on boundary hit), `--fine-radius`
+(fine sweep half-width, default 3 = coarse grid step − 1), `--c-entry`
+(sparse entry cost model, bytes). Run with `-h` for the full list.
+
+### Fixed-rank benchmark (Phase 2)
+
 ```powershell
 # Single variable smoke test (3 timesteps)
-./cpp/build/Release/hurricane_bench.exe `
+./phase2_cpp/build/Release/hurricane_bench.exe `
     --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --vars Uf --start 1 --end 3
 
 # Full experiment (all 13 variables × 48 timesteps)
-./cpp/build/Release/hurricane_bench.exe `
+./phase2_cpp/build/Release/hurricane_bench.exe `
     --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --start 1 --end 48 `
@@ -61,19 +94,21 @@ The executable will be at `cpp/build/Release/hurricane_bench.exe`.
 
 ## Downstream analysis
 
-The output CSVs in `results/hurricane/raw_cpp/` have the same column schema as
-the Python pipeline.  You can run the existing analysis and plot stages on them:
-
 ```bash
-python -m streaming_svd.experiments.hurricane.analyze \
+# Fixed-rank benchmark CSVs
+python analysis/hurricane/analyze.py \
     --raw-dir results/hurricane/raw_cpp \
-    --out results/hurricane/hurricane_summary_cpp.csv \
-    --print-table
-
-python -m streaming_svd.experiments.hurricane.plot \
+    --out results/hurricane/hurricane_summary_cpp.csv --print-table
+python analysis/hurricane/plot.py \
     --raw-dir results/hurricane/raw_cpp \
     --summary results/hurricane/hurricane_summary_cpp.csv \
     --fig-dir results/hurricane/figures_cpp
+
+# Unified adaptive sweeps (runners write the concatenated inputs)
+python scripts/run_isabel_sweep.py
+python scripts/run_static_sweep.py
+python analysis/hurricane/analyze_unified.py
+python analysis/static/analyze_static.py --input results/static/static_all_unified.csv
 ```
 
 ## Algorithm notes

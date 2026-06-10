@@ -1,6 +1,12 @@
 # Streaming SVD — CLI Handoff Plan
 *Generated 2026-05-26. Pick up any task below directly in CLI Claude Code.*
 
+> **STATUS (2026-06-10): SUPERSEDED.** Tasks 1–5 below were completed (or made moot)
+> by the Phase-3 two-stage adaptive compressor and the Phase-4 unified single-stage
+> redesign. Current state, results, and backlog live in `PROGRESS.md` (Phase 4 section).
+> This file is kept for the theoretical notes (error-bound derivations) and the
+> dataset survey in the backlog section.
+
 ---
 
 ## What Has Been Implemented (Phase 2 C++)
