@@ -57,8 +57,6 @@ streaming-svd/
 ├── analysis/                         # Python analysis/plotting on C++ output CSVs
 │   ├── hurricane/
 │   │   ├── analyze.py                #   Aggregate fixed-rank raw CSVs into summary statistics
-│   │   ├── plot.py                   #   Fixed-rank figures
-│   │   ├── plot_adaptive.py          #   Per-variable adaptive figures
 │   │   └── analyze_unified.py        #   Warm-vs-cold tables, overlays, heatmaps (isabel_all.csv)
 │   └── static/
 │       └── analyze_static.py         #   NYX/Miranda sweep summary + figures

@@ -222,7 +222,7 @@ int main(int argc, char* argv[]) {
 
             // ------------------------------------------------------------------
             // Assemble CSV row (warm_* fields carry dumb-warm values so that
-            // existing analyze.py / plot.py can consume this output unchanged)
+            // existing analyze.py can consume this output unchanged)
             // ------------------------------------------------------------------
             RawRowWriter::RowData row;
             row.var           = var;

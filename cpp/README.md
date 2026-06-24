@@ -99,10 +99,6 @@ half-width), `--k-expand` (window growth on boundary hit), `--fine-radius`
 python analysis/hurricane/analyze.py \
     --raw-dir results/hurricane/raw_cpp \
     --out results/hurricane/hurricane_summary_cpp.csv --print-table
-python analysis/hurricane/plot.py \
-    --raw-dir results/hurricane/raw_cpp \
-    --summary results/hurricane/hurricane_summary_cpp.csv \
-    --fig-dir results/hurricane/figures_cpp
 
 # Unified adaptive sweeps (runners write the concatenated inputs)
 python scripts/run_isabel_sweep.py

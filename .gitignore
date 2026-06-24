@@ -162,6 +162,10 @@ cpp/build/
 phase1_python_prototype/
 results/preliminary/
 
+# Plotting helpers (local figure/slide generation; not part of the published repo)
+analysis/hurricane/plot.py
+analysis/hurricane/plot_adaptive.py
+
 # LaTeX build artifacts
 *.aux
 *.bbl

@@ -5,10 +5,9 @@
 #include <vector>
 #include <cmath>
 
-/// Writes per-timestep rows to a raw CSV file with columns identical to the
-/// Python hurricane collect.py pipeline (60 columns).
+/// Writes per-timestep rows to a raw CSV file (60 columns).
 ///
-/// Column order and names match exactly so that analyze.py / plot.py can
+/// Column order and names are fixed so that analyze.py can
 /// consume results/hurricane/raw_cpp/{VAR}_raw.csv without modification.
 class RawRowWriter {
 public:
