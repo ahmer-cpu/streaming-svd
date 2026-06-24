@@ -126,6 +126,16 @@ dmypy.json
 CLAUDE.md
 .claude/
 
+# Internal planning / progress notes (working files, not project output)
+PLAN.md
+PROGRESS.md
+
+# Presentation files (never tracked)
+*.pptx
+*.ppt
+*.key
+*.odp
+
 # IDE
 .vscode/
 .idea/
@@ -146,7 +156,11 @@ results/figures/*
 *.json
 
 # C++ build artifacts
-phase2_cpp/build/
+cpp/build/
+
+# Python prototype (early exploratory work; not part of the published repo)
+phase1_python_prototype/
+results/preliminary/
 
 # LaTeX build artifacts
 *.aux

@@ -4,9 +4,9 @@ Runs the adaptive compressor for each (dataset, eps) pair, where eps is the
 value-range-relative error bound (tau = eps * (max - min) per variable).
 Two benchmarks are supported via --bench:
 
-  unified    (default)  phase2_cpp .. unified_adaptive_bench.exe
+  unified    (default)  cpp .. unified_adaptive_bench.exe
                         single-stage L + S compressor
-  two-stage             phase2_cpp .. static_adaptive_bench.exe
+  two-stage             cpp .. static_adaptive_bench.exe
                         legacy L1 + L2 + S compressor (kept as a baseline)
 
 Each run writes one CSV under results/<dataset>/<unified|adaptive>/.  After
@@ -31,7 +31,7 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-BUILD_DIR = REPO_ROOT / "phase2_cpp" / "build" / "Release"
+BUILD_DIR = REPO_ROOT / "cpp" / "build" / "Release"
 EXES = {
     "unified":   BUILD_DIR / "unified_adaptive_bench.exe",
     "two-stage": BUILD_DIR / "static_adaptive_bench.exe",
@@ -149,7 +149,7 @@ def main() -> None:
     exe = EXES[args.bench]
     if not exe.exists():
         raise SystemExit(f"Executable not found: {exe}\n"
-                         "Build it: cmake --build phase2_cpp/build --config Release "
+                         "Build it: cmake --build cpp/build --config Release "
                          f"--target {exe.stem}")
 
     csv_paths = []

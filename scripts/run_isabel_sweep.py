@@ -8,8 +8,7 @@ value-range-relative tolerances, in BOTH modes:
          is treated exactly like one static NYX/Miranda variable)
 
 tau is per-timestep (tau = eps * range(A_t)), so each Isabel snapshot is
-methodologically comparable to a static-dataset variable.  This choice is
-flagged for the presentation (PROGRESS.md, Phase-4 backlog).
+methodologically comparable to a static-dataset variable.
 
 Each (var, eps, mode) run writes results/hurricane/unified/
 <var>_unified[_cold]_eps<eps>.csv.  Afterwards everything is concatenated
@@ -32,10 +31,10 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXE = REPO_ROOT / "phase2_cpp" / "build" / "Release" / "unified_adaptive_bench.exe"
+EXE = REPO_ROOT / "cpp" / "build" / "Release" / "unified_adaptive_bench.exe"
 OUT_DIR = REPO_ROOT / "results" / "hurricane" / "unified"
 
-# Featured variables (Phase 3 selection): dense wind, temperature, vapour,
+# Featured variables: dense wind, temperature, vapour,
 # plus the sparse/unstable-rank control QRAINf.
 VARS = ["Uf", "TCf", "QVAPORf", "QRAINf"]
 EPS_VALUES = ["1e-2", "1e-3", "1e-4"]
@@ -130,7 +129,7 @@ def main() -> None:
 
     if not EXE.exists():
         raise SystemExit(f"Executable not found: {EXE}\n"
-                         "Build it: cmake --build phase2_cpp/build --config Release "
+                         "Build it: cmake --build cpp/build --config Release "
                          "--target unified_adaptive_bench")
 
     csv_paths = []

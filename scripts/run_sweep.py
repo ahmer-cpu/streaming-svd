@@ -1,6 +1,6 @@
 """Parameter sweep orchestrator for the Hurricane rSVD benchmark.
 
-Invokes phase2_cpp/build/Release/hurricane_bench.exe for each parameter
+Invokes cpp/build/Release/hurricane_bench.exe for each parameter
 configuration in the grid, writing results to separate subdirectories
 under results/sweep/.  After all runs complete, concatenates raw CSVs
 into a single sweep_all_raw.csv for downstream analysis.
@@ -48,7 +48,7 @@ SWEEP_VARS = [
 # ---------------------------------------------------------------------------
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-EXE = REPO_ROOT / "phase2_cpp" / "build" / "Release" / "hurricane_bench.exe"
+EXE = REPO_ROOT / "cpp" / "build" / "Release" / "hurricane_bench.exe"
 DATA_DIR = REPO_ROOT / "data" / "ISABEL_raw"
 SWEEP_DIR = REPO_ROOT / "results" / "sweep"
 
@@ -177,7 +177,7 @@ def main() -> None:
 
     if not EXE.exists():
         print(f"Error: executable not found at {EXE}")
-        print("Build first: cmake --build phase2_cpp/build --config Release")
+        print("Build first: cmake --build cpp/build --config Release")
         sys.exit(1)
 
     grid = build_grid()

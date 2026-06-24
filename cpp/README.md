@@ -1,7 +1,7 @@
 # Streaming SVD C++ Benchmarks
 
 C++ implementation of the cold- vs warm-start rSVD experiments and the adaptive
-error-bounded compressor. Removes all Python/PyTorch overhead from timing measurements.
+error-bounded compressor. Timing measurements wrap only the Eigen/BLAS calls.
 
 ## Executables
 
@@ -10,7 +10,7 @@ error-bounded compressor. Removes all Python/PyTorch overhead from timing measur
 | `unified_adaptive_bench` | **active** | Single-stage adaptive compressor `A_hat = L(rank k*) + S(sparse)` with hard guarantee `\|\|A - A_hat\|\|_max <= tau`. One driver: `--dataset isabel` (temporal; `--mode warm\|cold`) and `--dataset nyx\|miranda` (static, cold). |
 | `adaptive_bench` | legacy baseline | Two-stage (L1+L2+S) adaptive driver for Isabel (superseded June 2026). |
 | `static_adaptive_bench` | legacy baseline | Two-stage adaptive driver for NYX/Miranda. |
-| `hurricane_bench` | Phase 2 | Fixed-rank cold-vs-warm rSVD benchmark (all 13 Isabel variables). |
+| `hurricane_bench` | baseline | Fixed-rank cold-vs-warm rSVD benchmark (all 13 Isabel variables). |
 | `hurricane_dumb_bench` | control | Fixed-rank cold vs naive warm-start variant. |
 
 ## Prerequisites
@@ -31,7 +31,7 @@ C:\vcpkg\bootstrap-vcpkg.bat
 ### 2. Install dependencies via vcpkg
 
 ```powershell
-cd E:\PhD Year 2\SVD Project\streaming-svd\phase2_cpp
+cd E:\PhD Year 2\SVD Project\streaming-svd\cpp
 C:\vcpkg\vcpkg install --triplet x64-windows
 ```
 
@@ -42,15 +42,15 @@ This reads `vcpkg.json` and installs Eigen3 and OpenBLAS automatically.
 ```powershell
 cd E:\PhD Year 2\SVD Project\streaming-svd
 
-cmake -B phase2_cpp/build -S phase2_cpp `
+cmake -B cpp/build -S cpp `
       -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
       -DVCPKG_TARGET_TRIPLET=x64-windows `
       -DCMAKE_BUILD_TYPE=Release
 
-cmake --build phase2_cpp/build --config Release
+cmake --build cpp/build --config Release
 ```
 
-Executables land in `phase2_cpp/build/Release/`.
+Executables land in `cpp/build/Release/`.
 
 ## Usage
 
@@ -58,15 +58,15 @@ Executables land in `phase2_cpp/build/Release/`.
 
 ```powershell
 # Isabel, warm-started streaming, absolute tolerance
-./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+./cpp/build/Release/unified_adaptive_bench.exe `
     --dataset isabel --vars Uf TCf --start 1 --end 48 --tau 1.0
 
 # Isabel cold control arm, per-snapshot relative tolerance
-./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+./cpp/build/Release/unified_adaptive_bench.exe `
     --dataset isabel --mode cold --tau-mode vrel --eps 1e-3
 
 # NYX / Miranda (static, cold)
-./phase2_cpp/build/Release/unified_adaptive_bench.exe `
+./cpp/build/Release/unified_adaptive_bench.exe `
     --dataset miranda --tau-mode vrel --eps 1e-3
 ```
 
@@ -75,17 +75,17 @@ half-width), `--k-expand` (window growth on boundary hit), `--fine-radius`
 (fine sweep half-width, default 3 = coarse grid step − 1), `--c-entry`
 (sparse entry cost model, bytes). Run with `-h` for the full list.
 
-### Fixed-rank benchmark (Phase 2)
+### Fixed-rank benchmark
 
 ```powershell
 # Single variable smoke test (3 timesteps)
-./phase2_cpp/build/Release/hurricane_bench.exe `
+./cpp/build/Release/hurricane_bench.exe `
     --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --vars Uf --start 1 --end 3
 
 # Full experiment (all 13 variables × 48 timesteps)
-./phase2_cpp/build/Release/hurricane_bench.exe `
+./cpp/build/Release/hurricane_bench.exe `
     --data-dir data/ISABEL_raw `
     --out-dir results/hurricane/raw_cpp `
     --start 1 --end 48 `
@@ -123,5 +123,4 @@ Key timing phases recorded per timestep:
 - **Cold**: `omega_gen`, `initial_matmul`, `power_iter`, `qr`, `projection`, `small_svd`, `lift`
 - **Warm**: `warm_proj`, `warm_matmul`, `omega_gen`, `random_matmul`, `concat`, `power_iter`, `qr`, `projection`, `small_svd`, `lift`
 
-All timings use `std::chrono::steady_clock` wrapping only the Eigen/BLAS calls,
-with no Python interpreter overhead.
+All timings use `std::chrono::steady_clock` wrapping only the Eigen/BLAS calls.
